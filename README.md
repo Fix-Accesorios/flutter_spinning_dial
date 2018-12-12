@@ -1,3 +1,3 @@
-# flutter-spinning-dial
+# flutter_spinning_dial
 
 # still under construction
