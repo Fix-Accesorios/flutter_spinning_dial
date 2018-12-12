@@ -1,4 +1,4 @@
-package com.example.barrelroll;
+package com.example.flutter_spinning_dial;
 
 import android.os.Bundle;
 import io.flutter.app.FlutterActivity;
