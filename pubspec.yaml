@@ -1,4 +1,4 @@
-name: barrel_roll
+name: flutter_spinning_dial
 description: A new Flutter project.
 
 # The following defines the version and build number for your application.
@@ -37,9 +37,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  assets:
-    - assets/beach.jpeg
-    - assets/beach2.jpeg
+  #assets:
+  #  - assets/beach.jpeg
+  #  - assets/beach2.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.io/assets-and-images/#resolution-aware.

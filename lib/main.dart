@@ -27,7 +27,18 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   double _angle = 0;
   double _widgetHeight = 75.0;
-  var colors = [Colors.red, Colors.yellow, Colors.blue, Colors.red, Colors.yellow, Colors.blue,Colors.red, Colors.yellow, Colors.blue, Colors.red];
+  var colors = [
+    Colors.red,
+    Colors.yellow,
+    Colors.blue,
+    Colors.red,
+    Colors.yellow,
+    Colors.blue,
+    Colors.red,
+    Colors.yellow,
+    Colors.blue,
+    Colors.red
+  ];
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -43,9 +54,7 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Padding(
             padding: const EdgeInsets.only(top: 180.0),
             child: Stack(
-              children: 
-                constructStack(6,_angle)
-              ,
+              children: constructStack(6, _angle),
             ),
           ),
         ),
@@ -53,38 +62,38 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  List<Widget> constructStack(int sides, double rads){
-
+  List<Widget> constructStack(int sides, double rads) {
     //determine starting point
-    var sliceAngle = 2*pi / sides;
+    var sliceAngle = 2 * pi / sides;
     var index = 1;
-    var angle = rads % (2*pi);
-    for(var i = sliceAngle; i<2*pi;i += sliceAngle){
-      if( angle < i){
+    var angle = rads % (2 * pi);
+    for (var i = sliceAngle; i < 2 * pi; i += sliceAngle) {
+      if (angle < i) {
         break;
       }
       index++;
     }
-    if(index > sides ) index = sides;
+    if (index > sides) index = sides;
 
     print('index: $index    rads: $rads    absAngle: $angle');
 
-
     var ints = new List<int>(sides);
 
-    var up = index + 1 <= sides ? index+1:1;
+    var up = index + 1 <= sides ? index + 1 : 1;
     var down = index;
 
-    for(var i = 0; i< sides; i+=2){
+    for (var i = 0; i < sides; i += 2) {
       ints[i] = down;
-      ints[i+1] = up;
+      ints[i + 1] = up;
 
-    up = up + 1 <= sides ? up+1:1;
-    down = down - 1 > 0 ? down -1 : sides;
-
+      up = up + 1 <= sides ? up + 1 : 1;
+      down = down - 1 > 0 ? down - 1 : sides;
     }
 
-    return ints.reversed.map((int f) => createSide(f.toString(), colors[f-1], _widgetHeight, _angle, sides, f-1)).toList();
+    return ints.reversed
+        .map((int f) => createSide(
+            f.toString(), colors[f - 1], _widgetHeight, _angle, sides, f - 1))
+        .toList();
   }
 
   double calculateAngleDelta(Offset offset) {
@@ -99,7 +108,6 @@ class _MyHomePageState extends State<MyHomePage> {
     var angleOffset = index * angle;
 
     var sideAngle = -1 * (rads - angleOffset);
-
 
     return sideAngle;
   }
@@ -123,9 +131,8 @@ class _MyHomePageState extends State<MyHomePage> {
     return new Vectors.Vector3(0, y, z);
   }
 
-  
-  Widget createSide(
-      String num, Color color double sideHeight, double angle, int sides, int index) {
+  Widget createSide(String num, Color color, double sideHeight, double angle,
+      int sides, int index) {
     return Transform(
       key: Key(num),
       transform: Matrix4.identity()
@@ -140,19 +147,15 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget createFace(String num, Color color) {
     return ClipRect(
       key: Key(num),
-
       child: Align(
         alignment: Alignment.center,
         child: Container(
-      key: Key(num),
-
+          key: Key(num),
           color: color,
           padding: EdgeInsets.all(20.0),
           child: Text(
-            
             num,
-      key: Key(num),
-
+            key: Key(num),
             style: TextStyle(
               color: Colors.white,
               fontSize: 30.0,
