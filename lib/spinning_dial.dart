@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:vector_math/vector_math_64.dart' as Vectors;
 
+
 class SpinningDial extends StatefulWidget {
   final List<Widget> sides;
 
@@ -44,20 +45,11 @@ class _SpinningDialState extends State<SpinningDial> {
 
   List<Widget> constructStack(int sides, double currentAngle) {
     //determine starting point
-    var sliceAngle = 2 * pi / sides;
-    var frontSide = 0;
-    for (var i = sliceAngle; i < 2 * pi; i += sliceAngle) {
-      if (currentAngle < i) {
-        break;
-      }
-      frontSide++;
-    }
-    if (frontSide >= sides) frontSide = sides - 1;
+    var frontSide = determineFrontSide(sides, currentAngle);
 
     print('frontSide: $frontSide    currentAngle: $currentAngle');
 
     var ints = new List<int>(sides);
-
     var up = frontSide + 1 < sides ? frontSide + 1 : 0;
     var down = frontSide;
 
@@ -73,6 +65,24 @@ class _SpinningDialState extends State<SpinningDial> {
         .map((int index) =>
             createSide(_widgetHeight, currentAngle, sides, index))
         .toList();
+  }
+
+  int determineFrontSide(int sides, double currentAngle) {
+    //determine starting point
+    var frontSide = 0;
+
+    //If it is the first side, we will skip the for loop
+    if (currentAngle < (sides * 2 - 1) * pi / sides &&
+        currentAngle >= pi / sides) {
+      for (var i = 1; i < (sides * 2) - 1; i = i + 2) {
+        frontSide++;
+        if (currentAngle > i * pi / sides &&
+            currentAngle < (i + 2) * pi / sides) {
+          return frontSide;
+        }
+      }
+    }
+    return frontSide;
   }
 
   Widget createSide(
