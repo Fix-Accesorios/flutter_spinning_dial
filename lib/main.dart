@@ -73,7 +73,9 @@ class _MyHomePageState extends State<MyHomePage> {
             createFace(3),
             createFace(4),
             createFace(5),
+            createFace(6),
           ],
+          sideHeight: 75.0,
         ));
   }
 }

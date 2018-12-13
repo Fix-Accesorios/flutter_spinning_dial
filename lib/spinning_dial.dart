@@ -5,8 +5,9 @@ import 'package:vector_math/vector_math_64.dart' as Vectors;
 
 class SpinningDial extends StatefulWidget {
   final List<Widget> sides;
+  final double sideHeight;
 
-  SpinningDial({Key key, this.sides}) : super(key: key); // changed
+  SpinningDial({Key key, this.sides, this.sideHeight}) : super(key: key); // changed
 
   @override
   _SpinningDialState createState() => _SpinningDialState();
@@ -14,7 +15,6 @@ class SpinningDial extends StatefulWidget {
 
 class _SpinningDialState extends State<SpinningDial> {
   double _angle = 0;
-  double _widgetHeight = 75.0;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class _SpinningDialState extends State<SpinningDial> {
         child: Padding(
           padding: const EdgeInsets.only(top: 180.0),
           child: Stack(
-            children: constructStack(6, _angle),
+            children: constructStack(widget.sides.length, _angle),
           ),
         ),
       ),
@@ -43,41 +43,41 @@ class _SpinningDialState extends State<SpinningDial> {
     return radDelta;
   }
 
-  List<Widget> constructStack(int sides, double currentAngle) {
+  List<Widget> constructStack(int sideCount, double currentAngle) {
     //determine starting point
-    var frontSide = determineFrontSide(sides, currentAngle);
+    var frontSide = determineFrontSide(sideCount, currentAngle);
 
     print('frontSide: $frontSide    currentAngle: $currentAngle');
 
-    var ints = new List<int>(sides);
-    var up = frontSide + 1 < sides ? frontSide + 1 : 0;
+    var ints = new List<int>(sideCount);
+    var up = frontSide + 1 < sideCount ? frontSide + 1 : 0;
     var down = frontSide;
 
-    for (var i = 0; i < sides - 1; i += 2) {
+    for (var i = 0; i < sideCount - 1; i += 2) {
       ints[i] = down;
       ints[i + 1] = up;
 
-      up = up + 1 < sides ? up + 1 : 0;
-      down = down - 1 >= 0 ? down - 1 : sides - 1;
+      up = up + 1 < sideCount ? up + 1 : 0;
+      down = down - 1 >= 0 ? down - 1 : sideCount - 1;
     }
 
     return ints.reversed
         .map((int index) =>
-            createSide(_widgetHeight, currentAngle, sides, index))
+            createSide(this.widget.sideHeight, currentAngle, sideCount, index))
         .toList();
   }
 
-  int determineFrontSide(int sides, double currentAngle) {
+  int determineFrontSide(int sideCount, double currentAngle) {
     //determine starting point
     var frontSide = 0;
 
     //If it is the first side, we will skip the for loop
-    if (currentAngle < (sides * 2 - 1) * pi / sides &&
-        currentAngle >= pi / sides) {
-      for (var i = 1; i < (sides * 2) - 1; i = i + 2) {
+    if (currentAngle < (sideCount * 2 - 1) * pi / sideCount &&
+        currentAngle >= pi / sideCount) {
+      for (var i = 1; i < (sideCount * 2) - 1; i = i + 2) {
         frontSide++;
-        if (currentAngle > i * pi / sides &&
-            currentAngle < (i + 2) * pi / sides) {
+        if (currentAngle > i * pi / sideCount &&
+            currentAngle < (i + 2) * pi / sideCount) {
           return frontSide;
         }
       }
@@ -86,20 +86,20 @@ class _SpinningDialState extends State<SpinningDial> {
   }
 
   Widget createSide(
-      double sideHeight, double currentAngle, int sides, int index) {
+      double sideHeight, double currentAngle, int sideCount, int index) {
     return Transform(
       key: Key((index + 1).toString()),
       transform: Matrix4.identity()
         ..setEntry(3, 2, 0.001) // perspective
-        ..translate(calculateOffset(currentAngle, sideHeight, sides, index))
-        ..rotateX(calculateSideRotationAngle(currentAngle, sides, index)),
+        ..translate(calculateOffset(currentAngle, sideHeight, sideCount, index))
+        ..rotateX(calculateSideRotationAngle(currentAngle, sideCount, index)),
       alignment: Alignment.center,
       child: this.widget.sides[index],
     );
   }
 
-  double calculateSideRotationAngle(double rads, int sides, int index) {
-    var angle = 2 * pi / sides;
+  double calculateSideRotationAngle(double rads, int sideCount, int index) {
+    var angle = 2 * pi / sideCount;
     var angleOffset = index * angle;
 
     var sideAngle = -1 * (rads - angleOffset);
@@ -108,12 +108,13 @@ class _SpinningDialState extends State<SpinningDial> {
   }
 
   Vectors.Vector3 calculateOffset(
-      double rads, double sideHeight, int sides, int index) {
+      double rads, double sideHeight, int sideCount, int index) {
     //Calculate the angle of each "pizza slice" by dividing 360 degrees by the number of "slices"
-    var angle = 2 * pi / sides;
+    var angle = 2 * pi / sideCount;
+    var legAngle = pi - pi/2 - angle/2;
 
     //the adjacent leg of the triangle is half of the side height. The opposite leg of the triangle will be the radius
-    var radius = tan(angle) * (sideHeight / 2);
+    var radius = tan(legAngle) * (sideHeight / 2);
 
     var angleOffset = index * angle;
 
