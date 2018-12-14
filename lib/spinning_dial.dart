@@ -22,44 +22,68 @@ class SpinningDial extends StatefulWidget {
   _SpinningDialState createState() => _SpinningDialState();
 }
 
-class _SpinningDialState extends State<SpinningDial> with TickerProviderStateMixin {
-  double _angle = 0;
+class _SpinningDialState extends State<SpinningDial>
+    with TickerProviderStateMixin {
+  double _currentAngle = 0;
   int _currentFrontIndex = 0;
-AnimationController positionController;
+  AnimationController positionController;
+  Animation<double> animation;
 
- @override
+  @override
   void initState() {
     super.initState();
     positionController = AnimationController(
-      duration: kRadialReactionDuration,
+      duration: Duration(seconds: 3),
       vsync: this,
     );
+    animation = Tween(begin: _currentAngle, end: 2 * 3 * pi / 6)
+        .animate(positionController)
+          ..addListener(() {
+            setState(() {
+              _currentAngle = animation.value;
+              print(_currentAngle);
+            });
+          });
   }
+
+  @override
+  void dispose() {
+    positionController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       // new
-      onPanUpdate: (details) => handleOnPanUpdate(details),
-      onPanEnd: (details) => handleOnPanEnd(details),
-      onDoubleTap: () => setState(() => _angle = 0),
+      // onPanUpdate: (details) => handleOnPanUpdate(details.delta.dy),
+      onVerticalDragUpdate: (details) => handleOnPanUpdate(details.delta.dy),
+      onVerticalDragEnd: (details) => handleOnPanEnd(),
+      onDoubleTap: () => setState(() => _currentAngle = 0),
       behavior: HitTestBehavior.deferToChild,
       child: Stack(
-        children: constructStack(widget.sides.length, _angle),
+        children: constructStack(widget.sides.length, _currentAngle),
       ),
     );
   }
 
-  void handleOnPanUpdate(DragUpdateDetails details) {
-    setState(() =>
-        _angle = (_angle + calculateRadianDelta(details.delta)) % (2 * pi));
+  void handleOnPanUpdate(double linearDelta) {
+    var rotationalDelta = calculateRotationalDelta(linearDelta);
+    var absoluteAngle = (_currentAngle + rotationalDelta) % (2 * pi);
+    positionController.value = absoluteAngle;
+    positionController.stop();
+    setState(() => _currentAngle = absoluteAngle);
   }
 
-  handleOnPanEnd(DragEndDetails details) {
-    
+  void handleOnPanEnd() {
+    animation = Tween(begin: _currentAngle, end: _currentAngle -pi)
+        .animate(positionController);
+    positionController.forward();
+    print("ended");
   }
 
-  double calculateRadianDelta(Offset offset) {
-    double angleDelta = -0.5 * (offset.dy);
+  double calculateRotationalDelta(double linearDelta) {
+    double angleDelta = -0.5 * (linearDelta);
     double radDelta = angleDelta * pi / 180;
 
     return radDelta;
@@ -152,5 +176,4 @@ AnimationController positionController;
     //print('Index: $index   y:$y    z:$z');
     return new Vectors.Vector3(0, y, z);
   }
-
 }
