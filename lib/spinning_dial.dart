@@ -2,38 +2,60 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:vector_math/vector_math_64.dart' as Vectors;
 
+enum Detent { none, small, medium, large }
 
 class SpinningDial extends StatefulWidget {
   final List<Widget> sides;
   final double sideHeight;
+  final Detent detent;
+  final ValueChanged<int> onChanged;
 
-  SpinningDial({Key key, this.sides, this.sideHeight}) : super(key: key); // changed
+  SpinningDial(
+      {Key key,
+      @required this.sides,
+      @required this.sideHeight,
+      this.detent = Detent.medium,
+      @required this.onChanged})
+      : super(key: key); // changed
 
   @override
   _SpinningDialState createState() => _SpinningDialState();
 }
 
-class _SpinningDialState extends State<SpinningDial> {
+class _SpinningDialState extends State<SpinningDial> with TickerProviderStateMixin {
   double _angle = 0;
+  int _currentFrontIndex = 0;
+AnimationController positionController;
 
+ @override
+  void initState() {
+    super.initState();
+    positionController = AnimationController(
+      duration: kRadialReactionDuration,
+      vsync: this,
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       // new
-      onPanUpdate: (details) => setState(() =>
-          _angle = (_angle + calculateRadianDelta(details.delta)) % (2 * pi)),
+      onPanUpdate: (details) => handleOnPanUpdate(details),
+      onPanEnd: (details) => handleOnPanEnd(details),
       onDoubleTap: () => setState(() => _angle = 0),
       behavior: HitTestBehavior.deferToChild,
-      child: Container(
-        color: Colors.green,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 180.0),
-          child: Stack(
-            children: constructStack(widget.sides.length, _angle),
-          ),
-        ),
+      child: Stack(
+        children: constructStack(widget.sides.length, _angle),
       ),
     );
+  }
+
+  void handleOnPanUpdate(DragUpdateDetails details) {
+    setState(() =>
+        _angle = (_angle + calculateRadianDelta(details.delta)) % (2 * pi));
+  }
+
+  handleOnPanEnd(DragEndDetails details) {
+    
   }
 
   double calculateRadianDelta(Offset offset) {
@@ -45,17 +67,20 @@ class _SpinningDialState extends State<SpinningDial> {
 
   List<Widget> constructStack(int sideCount, double currentAngle) {
     //determine starting point
-    var frontSide = determineFrontSide(sideCount, currentAngle);
-
-    print('frontSide: $frontSide    currentAngle: $currentAngle');
+    var frontIndex = determineFrontSide(sideCount, currentAngle);
+    if (frontIndex != _currentFrontIndex) {
+      widget.onChanged(frontIndex);
+      _currentFrontIndex = frontIndex;
+    }
+    //print('frontSide: $frontIndex    currentAngle: $currentAngle');
 
     var ints = new List<int>(sideCount);
-    var up = frontSide + 1 < sideCount ? frontSide + 1 : 0;
-    var down = frontSide;
+    var up = frontIndex + 1 < sideCount ? frontIndex + 1 : 0;
+    var down = frontIndex;
 
-    for (var i = 0; i < sideCount - 1; i += 2) {
+    for (var i = 0; i < sideCount; i += 2) {
       ints[i] = down;
-      ints[i + 1] = up;
+      if (i != sideCount - 1) ints[i + 1] = up;
 
       up = up + 1 < sideCount ? up + 1 : 0;
       down = down - 1 >= 0 ? down - 1 : sideCount - 1;
@@ -69,20 +94,21 @@ class _SpinningDialState extends State<SpinningDial> {
 
   int determineFrontSide(int sideCount, double currentAngle) {
     //determine starting point
-    var frontSide = 0;
+    var frontIndex = 0;
 
     //If it is the first side, we will skip the for loop
     if (currentAngle < (sideCount * 2 - 1) * pi / sideCount &&
         currentAngle >= pi / sideCount) {
       for (var i = 1; i < (sideCount * 2) - 1; i = i + 2) {
-        frontSide++;
+        frontIndex++;
         if (currentAngle > i * pi / sideCount &&
             currentAngle < (i + 2) * pi / sideCount) {
-          return frontSide;
+          return frontIndex;
         }
       }
     }
-    return frontSide;
+
+    return frontIndex;
   }
 
   Widget createSide(
@@ -111,7 +137,7 @@ class _SpinningDialState extends State<SpinningDial> {
       double rads, double sideHeight, int sideCount, int index) {
     //Calculate the angle of each "pizza slice" by dividing 360 degrees by the number of "slices"
     var angle = 2 * pi / sideCount;
-    var legAngle = pi - pi/2 - angle/2;
+    var legAngle = pi - pi / 2 - angle / 2;
 
     //the adjacent leg of the triangle is half of the side height. The opposite leg of the triangle will be the radius
     var radius = tan(legAngle) * (sideHeight / 2);
@@ -126,4 +152,5 @@ class _SpinningDialState extends State<SpinningDial> {
     //print('Index: $index   y:$y    z:$z');
     return new Vectors.Vector3(0, y, z);
   }
+
 }

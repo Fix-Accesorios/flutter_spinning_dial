@@ -61,21 +61,32 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  int _value;
   @override
   Widget build(BuildContext context) {
     return Container(
-        color: Colors.red,
-        child: SpinningDial(
-          sides: <Widget>[
-            createFace(0),
-            createFace(1),
-            createFace(2),
-            createFace(3),
-            createFace(4),
-            createFace(5),
-            createFace(6),
-          ],
-          sideHeight: 75.0,
-        ));
+      color: Colors.red,
+      child: Container(
+        color: Colors.green,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 180.0),
+          child: SpinningDial(
+            sides: <Widget>[
+              createFace(0),
+              createFace(1),
+              createFace(2),
+              createFace(3),
+              createFace(4),
+              createFace(5),
+            ],
+            sideHeight: 75.0,
+            onChanged: (int newValue) {
+                _value = newValue.round();
+                print(_value);
+            },
+          ),
+        ),
+      ),
+    );
   }
 }
