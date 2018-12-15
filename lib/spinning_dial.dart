@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:vector_math/vector_math_64.dart' as Vectors;
@@ -6,17 +8,20 @@ enum Detent { none, small, medium, large }
 
 class SpinningDial extends StatefulWidget {
   final List<Widget> sides;
-  final double sideHeight;
-  final Detent detent;
+  final double sideLength;
+  final double detent;
   final ValueChanged<int> onChanged;
+  RegularPolygon polygon;
 
   SpinningDial(
       {Key key,
       @required this.sides,
-      @required this.sideHeight,
-      this.detent = Detent.medium,
+      @required this.sideLength,
+      this.detent = 1.00,
       @required this.onChanged})
-      : super(key: key); // changed
+      : super(key: key) {
+    polygon = RegularPolygon(sides.length, sideLength);
+  }
 
   @override
   _SpinningDialState createState() => _SpinningDialState();
@@ -28,22 +33,29 @@ class _SpinningDialState extends State<SpinningDial>
   int _currentFrontIndex = 0;
   AnimationController positionController;
   Animation<double> animation;
+  double _animationStartAngle;
+  double _animationEndAngle;
 
   @override
   void initState() {
     super.initState();
+
     positionController = AnimationController(
-      duration: Duration(seconds: 3),
-      vsync: this,
-    );
-    animation = Tween(begin: _currentAngle, end: 2 * 3 * pi / 6)
-        .animate(positionController)
-          ..addListener(() {
-            setState(() {
-              _currentAngle = animation.value;
-              print(_currentAngle);
-            });
-          });
+        duration: const Duration(milliseconds: 100), vsync: this);
+    final CurvedAnimation curve =
+        CurvedAnimation(parent: positionController, curve: Curves.bounceOut);
+    animation = Tween(begin: 0.0, end: 1.0).animate(curve);
+    animation.addListener(() {
+      setState(() {
+        var animated = lerpDouble(
+            _animationStartAngle, _animationEndAngle, animation.value);
+        var animatedAngle = animation.value;
+        print(
+            "animationValue: $animated    currentAngle: $_currentAngle    animatedAngle: $animatedAngle");
+
+        _currentAngle = animated;
+      });
+    });
   }
 
   @override
@@ -56,30 +68,35 @@ class _SpinningDialState extends State<SpinningDial>
   Widget build(BuildContext context) {
     return GestureDetector(
       // new
-      // onPanUpdate: (details) => handleOnPanUpdate(details.delta.dy),
       onVerticalDragUpdate: (details) => handleOnPanUpdate(details.delta.dy),
       onVerticalDragEnd: (details) => handleOnPanEnd(),
-      onDoubleTap: () => setState(() => _currentAngle = 0),
       behavior: HitTestBehavior.deferToChild,
       child: Stack(
-        children: constructStack(widget.sides.length, _currentAngle),
+        children: constructStack(_currentAngle),
       ),
     );
   }
 
   void handleOnPanUpdate(double linearDelta) {
+    positionController.stop();
     var rotationalDelta = calculateRotationalDelta(linearDelta);
     var absoluteAngle = (_currentAngle + rotationalDelta) % (2 * pi);
-    positionController.value = absoluteAngle;
-    positionController.stop();
     setState(() => _currentAngle = absoluteAngle);
   }
 
   void handleOnPanEnd() {
-    animation = Tween(begin: _currentAngle, end: _currentAngle -pi)
-        .animate(positionController);
-    positionController.forward();
-    print("ended");
+    _animationStartAngle = _currentAngle;
+    var currentDetentAngle = detentAngle();
+    if (!currentDetentAngle.isNaN) {
+      if (currentDetentAngle == 0 && _currentAngle > pi) {
+        currentDetentAngle = 2 * pi;
+      }
+      _animationEndAngle = currentDetentAngle;
+      print("Detent! _animationStartAngle: $_animationStartAngle     " +
+          "_animationEndAngle: $_animationEndAngle");
+
+      positionController.forward(from: 0.0);
+    }
   }
 
   double calculateRotationalDelta(double linearDelta) {
@@ -89,44 +106,68 @@ class _SpinningDialState extends State<SpinningDial>
     return radDelta;
   }
 
-  List<Widget> constructStack(int sideCount, double currentAngle) {
+  double detentAngle() {
+    var frontSideAngle = _currentFrontIndex * 2 * pi / widget.polygon.sides;
+    var detentOffset = widget.polygon.exteriorAngle * widget.detent / 2;
+
+    var positiveOffset = frontSideAngle + detentOffset;
+    var negativeOffset = frontSideAngle - detentOffset;
+    if (negativeOffset < 0 || positiveOffset > 2 * pi) {
+      if (negativeOffset < 0) {
+        negativeOffset = 2 * pi - negativeOffset.abs();
+      }
+      if (positiveOffset > 2 * pi) {
+        positiveOffset = positiveOffset - 2 * pi;
+      }
+      if ((_currentAngle > negativeOffset) ||
+          (_currentAngle < positiveOffset)) {
+        return frontSideAngle;
+      }
+    }
+    if ((_currentAngle > negativeOffset) && (_currentAngle < positiveOffset)) {
+      return frontSideAngle;
+    }
+    return double.nan;
+  }
+
+  List<Widget> constructStack(double currentAngle) {
+    var sides = widget.polygon.sides;
     //determine starting point
-    var frontIndex = determineFrontSide(sideCount, currentAngle);
+    var frontIndex = determineFrontSide(currentAngle);
     if (frontIndex != _currentFrontIndex) {
       widget.onChanged(frontIndex);
       _currentFrontIndex = frontIndex;
     }
-    //print('frontSide: $frontIndex    currentAngle: $currentAngle');
+    print('frontSide: $frontIndex    currentAngle: $currentAngle');
 
-    var ints = new List<int>(sideCount);
-    var up = frontIndex + 1 < sideCount ? frontIndex + 1 : 0;
+    var ints = new List<int>(sides);
+    var up = frontIndex + 1 < sides ? frontIndex + 1 : 0;
     var down = frontIndex;
 
-    for (var i = 0; i < sideCount; i += 2) {
+    for (var i = 0; i < sides; i += 2) {
       ints[i] = down;
-      if (i != sideCount - 1) ints[i + 1] = up;
+      if (i != sides - 1) ints[i + 1] = up;
 
-      up = up + 1 < sideCount ? up + 1 : 0;
-      down = down - 1 >= 0 ? down - 1 : sideCount - 1;
+      up = up + 1 < sides ? up + 1 : 0;
+      down = down - 1 >= 0 ? down - 1 : sides - 1;
     }
 
     return ints.reversed
-        .map((int index) =>
-            createSide(this.widget.sideHeight, currentAngle, sideCount, index))
+        .map((int index) => createSide(currentAngle, index))
         .toList();
   }
 
-  int determineFrontSide(int sideCount, double currentAngle) {
+  int determineFrontSide(double currentAngle) {
     //determine starting point
     var frontIndex = 0;
-
+    var sides = widget.polygon.sides;
     //If it is the first side, we will skip the for loop
-    if (currentAngle < (sideCount * 2 - 1) * pi / sideCount &&
-        currentAngle >= pi / sideCount) {
-      for (var i = 1; i < (sideCount * 2) - 1; i = i + 2) {
+    if (currentAngle < (sides * 2 - 1) * pi / sides &&
+        currentAngle >= pi / sides) {
+      for (var i = 1; i < (sides * 2) - 1; i = i + 2) {
         frontIndex++;
-        if (currentAngle > i * pi / sideCount &&
-            currentAngle < (i + 2) * pi / sideCount) {
+        if (currentAngle > i * pi / sides &&
+            currentAngle < (i + 2) * pi / sides) {
           return frontIndex;
         }
       }
@@ -135,45 +176,56 @@ class _SpinningDialState extends State<SpinningDial>
     return frontIndex;
   }
 
-  Widget createSide(
-      double sideHeight, double currentAngle, int sideCount, int index) {
+  Widget createSide(double currentAngle, int index) {
     return Transform(
       key: Key((index + 1).toString()),
       transform: Matrix4.identity()
         ..setEntry(3, 2, 0.001) // perspective
-        ..translate(calculateOffset(currentAngle, sideHeight, sideCount, index))
-        ..rotateX(calculateSideRotationAngle(currentAngle, sideCount, index)),
+        ..translate(calculateLinearOffset(currentAngle, index))
+        ..rotateX(calculateRotationOffset(currentAngle, index)),
       alignment: Alignment.center,
       child: this.widget.sides[index],
     );
   }
 
-  double calculateSideRotationAngle(double rads, int sideCount, int index) {
-    var angle = 2 * pi / sideCount;
-    var angleOffset = index * angle;
-
-    var sideAngle = -1 * (rads - angleOffset);
-
-    return sideAngle;
+  double calculateRotationOffset(double currentAngle, int index) {
+    return -1 * (currentAngle - index * widget.polygon.exteriorAngle);
   }
 
-  Vectors.Vector3 calculateOffset(
-      double rads, double sideHeight, int sideCount, int index) {
-    //Calculate the angle of each "pizza slice" by dividing 360 degrees by the number of "slices"
-    var angle = 2 * pi / sideCount;
-    var legAngle = pi - pi / 2 - angle / 2;
+  Vectors.Vector3 calculateLinearOffset(double currentAngle, int index) {
+    //Represents the angle of the apothem of this specific side from 0.0
+    var indexedAngle = currentAngle - index * widget.polygon.exteriorAngle;
 
-    //the adjacent leg of the triangle is half of the side height. The opposite leg of the triangle will be the radius
-    var radius = tan(legAngle) * (sideHeight / 2);
+    double y = -1 * sin(indexedAngle) * widget.polygon.apothem;
+    double z = -1 * cos(indexedAngle) * widget.polygon.apothem;
 
-    var angleOffset = index * angle;
-
-    var indexedAngle = rads - angleOffset;
-
-    double y = -1 * sin(indexedAngle) * radius;
-    double z = -1 * cos(indexedAngle) * radius;
-
-    //print('Index: $index   y:$y    z:$z');
     return new Vectors.Vector3(0, y, z);
+  }
+}
+
+/// Based on regular polygon definitions found here: https://www.mathsisfun.com/geometry/regular-polygons.html
+///
+class RegularPolygon {
+  final int sides;
+  final double sideLength;
+
+  //Angle between two lines that connect to vertices of a side
+  double exteriorAngle;
+
+  //Angle between two connected sides
+  double interiorAngle;
+
+  //Distance to middle of side
+  double apothem;
+
+//distance to vertex
+  double radius;
+
+  RegularPolygon(this.sides, this.sideLength) {
+    interiorAngle = pi * (sides - 2) / sides;
+    exteriorAngle = pi - interiorAngle;
+
+    apothem = sideLength / (2 * tan(pi / sides));
+    radius = sideLength / (2 * sin(pi / sides));
   }
 }

@@ -79,7 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
               createFace(4),
               createFace(5),
             ],
-            sideHeight: 75.0,
+            sideLength: 75.0,
             onChanged: (int newValue) {
                 _value = newValue.round();
                 print(_value);
