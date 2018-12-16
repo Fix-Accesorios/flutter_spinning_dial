@@ -1,5 +1,5 @@
 import 'dart:ui';
-
+//import 'package:audioplayers/audio_cache.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:vector_math/vector_math_64.dart' as Vectors;
@@ -11,7 +11,6 @@ class SpinningDial extends StatefulWidget {
   final double sideLength;
   final double detent;
   final ValueChanged<int> onChanged;
-  RegularPolygon polygon;
 
   SpinningDial(
       {Key key,
@@ -19,9 +18,7 @@ class SpinningDial extends StatefulWidget {
       @required this.sideLength,
       this.detent = 1.00,
       @required this.onChanged})
-      : super(key: key) {
-    polygon = RegularPolygon(sides.length, sideLength);
-  }
+      : super(key: key);
 
   @override
   _SpinningDialState createState() => _SpinningDialState();
@@ -35,11 +32,14 @@ class _SpinningDialState extends State<SpinningDial>
   Animation<double> animation;
   double _animationStartAngle;
   double _animationEndAngle;
+  //static AudioCache player = new AudioCache();
+  RegularPolygon polygon;
+  bool isInDetent = true;
 
   @override
   void initState() {
     super.initState();
-
+    polygon = RegularPolygon(widget.sides.length, widget.sideLength);
     positionController = AnimationController(
         duration: const Duration(milliseconds: 100), vsync: this);
     final CurvedAnimation curve =
@@ -49,9 +49,8 @@ class _SpinningDialState extends State<SpinningDial>
       setState(() {
         var animated = lerpDouble(
             _animationStartAngle, _animationEndAngle, animation.value);
-        var animatedAngle = animation.value;
-        print(
-            "animationValue: $animated    currentAngle: $_currentAngle    animatedAngle: $animatedAngle");
+        //print(
+        //    "animationValue: $animated    currentAngle: $_currentAngle    animatedAngle: $animatedAngle");
 
         _currentAngle = animated;
       });
@@ -81,19 +80,20 @@ class _SpinningDialState extends State<SpinningDial>
     positionController.stop();
     var rotationalDelta = calculateRotationalDelta(linearDelta);
     var absoluteAngle = (_currentAngle + rotationalDelta) % (2 * pi);
+
     setState(() => _currentAngle = absoluteAngle);
   }
 
   void handleOnPanEnd() {
     _animationStartAngle = _currentAngle;
-    var currentDetentAngle = detentAngle();
+    var currentDetentAngle = detentAngle(widget.detent);
     if (!currentDetentAngle.isNaN) {
       if (currentDetentAngle == 0 && _currentAngle > pi) {
         currentDetentAngle = 2 * pi;
       }
       _animationEndAngle = currentDetentAngle;
-      print("Detent! _animationStartAngle: $_animationStartAngle     " +
-          "_animationEndAngle: $_animationEndAngle");
+      //print("Detent! _animationStartAngle: $_animationStartAngle     " +
+      //    "_animationEndAngle: $_animationEndAngle");
 
       positionController.forward(from: 0.0);
     }
@@ -106,9 +106,9 @@ class _SpinningDialState extends State<SpinningDial>
     return radDelta;
   }
 
-  double detentAngle() {
-    var frontSideAngle = _currentFrontIndex * 2 * pi / widget.polygon.sides;
-    var detentOffset = widget.polygon.exteriorAngle * widget.detent / 2;
+  double detentAngle(double percent) {
+    var frontSideAngle = _currentFrontIndex * 2 * pi / polygon.sides;
+    var detentOffset = polygon.exteriorAngle * percent / 2;
 
     var positiveOffset = frontSideAngle + detentOffset;
     var negativeOffset = frontSideAngle - detentOffset;
@@ -130,15 +130,28 @@ class _SpinningDialState extends State<SpinningDial>
     return double.nan;
   }
 
+  void doClick(double currentAngle) {
+    if (!isInDetent && !detentAngle(0.1).isNaN) {
+      print('click');
+      //player.play("assets/click.mp3");
+      isInDetent = true;
+    }
+    if (isInDetent && detentAngle(0.1).isNaN) {
+      isInDetent = false;
+      print('unclick');
+    }
+  }
+
   List<Widget> constructStack(double currentAngle) {
-    var sides = widget.polygon.sides;
+    var sides = polygon.sides;
     //determine starting point
     var frontIndex = determineFrontSide(currentAngle);
     if (frontIndex != _currentFrontIndex) {
       widget.onChanged(frontIndex);
       _currentFrontIndex = frontIndex;
     }
-    print('frontSide: $frontIndex    currentAngle: $currentAngle');
+    doClick(currentAngle);
+    //print('frontSide: $frontIndex    currentAngle: $currentAngle');
 
     var ints = new List<int>(sides);
     var up = frontIndex + 1 < sides ? frontIndex + 1 : 0;
@@ -160,7 +173,7 @@ class _SpinningDialState extends State<SpinningDial>
   int determineFrontSide(double currentAngle) {
     //determine starting point
     var frontIndex = 0;
-    var sides = widget.polygon.sides;
+    var sides = polygon.sides;
     //If it is the first side, we will skip the for loop
     if (currentAngle < (sides * 2 - 1) * pi / sides &&
         currentAngle >= pi / sides) {
@@ -189,15 +202,15 @@ class _SpinningDialState extends State<SpinningDial>
   }
 
   double calculateRotationOffset(double currentAngle, int index) {
-    return -1 * (currentAngle - index * widget.polygon.exteriorAngle);
+    return -1 * (currentAngle - index * polygon.exteriorAngle);
   }
 
   Vectors.Vector3 calculateLinearOffset(double currentAngle, int index) {
     //Represents the angle of the apothem of this specific side from 0.0
-    var indexedAngle = currentAngle - index * widget.polygon.exteriorAngle;
+    var indexedAngle = currentAngle - index * polygon.exteriorAngle;
 
-    double y = -1 * sin(indexedAngle) * widget.polygon.apothem;
-    double z = -1 * cos(indexedAngle) * widget.polygon.apothem;
+    double y = -1 * sin(indexedAngle) * polygon.apothem;
+    double z = -1 * cos(indexedAngle) * polygon.apothem;
 
     return new Vectors.Vector3(0, y, z);
   }
