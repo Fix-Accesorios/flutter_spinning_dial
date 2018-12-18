@@ -30,8 +30,7 @@ class _SpinningDialState extends State<SpinningDial>
   int _currentFrontIndex = 0;
   AnimationController positionController;
   Animation<double> animation;
-  double _animationStartAngle;
-  double _animationEndAngle;
+
   //static AudioCache player = new AudioCache();
   RegularPolygon polygon;
   bool isInDetent = true;
@@ -41,20 +40,19 @@ class _SpinningDialState extends State<SpinningDial>
     super.initState();
     polygon = RegularPolygon(widget.sides.length, widget.sideLength);
     positionController = AnimationController(
-        duration: const Duration(milliseconds: 100), vsync: this);
-    final CurvedAnimation curve =
-        CurvedAnimation(parent: positionController, curve: Curves.bounceOut);
-    animation = Tween(begin: 0.0, end: 1.0).animate(curve);
-    animation.addListener(() {
-      setState(() {
-        var animated = lerpDouble(
-            _animationStartAngle, _animationEndAngle, animation.value);
-        //print(
-        //    "animationValue: $animated    currentAngle: $_currentAngle    animatedAngle: $animatedAngle");
-
-        _currentAngle = animated;
+      duration: const Duration(
+        milliseconds: 100,
+      ),
+      vsync: this,
+    );
+    animation = positionController.drive(Tween())//We will replace this animation when it is time to animate
+      ..addListener(() {
+        setState(() {
+          var animated = animation.value;
+          print("animationValue: $animated    currentAngle: $_currentAngle");
+          _currentAngle = animated;
+        });
       });
-    });
   }
 
   @override
@@ -67,8 +65,8 @@ class _SpinningDialState extends State<SpinningDial>
   Widget build(BuildContext context) {
     return GestureDetector(
       // new
-      onVerticalDragUpdate: (details) => handleOnPanUpdate(details.delta.dy),
-      onVerticalDragEnd: (details) => handleOnPanEnd(),
+      onVerticalDragUpdate: (details) => handleOnDragUpdate(details.delta.dy),
+      onVerticalDragEnd: (details) => handleOnDragEnd(details),
       behavior: HitTestBehavior.deferToChild,
       child: Stack(
         children: constructStack(_currentAngle),
@@ -76,7 +74,7 @@ class _SpinningDialState extends State<SpinningDial>
     );
   }
 
-  void handleOnPanUpdate(double linearDelta) {
+  void handleOnDragUpdate(double linearDelta) {
     positionController.stop();
     var rotationalDelta = calculateRotationalDelta(linearDelta);
     var absoluteAngle = (_currentAngle + rotationalDelta) % (2 * pi);
@@ -84,17 +82,21 @@ class _SpinningDialState extends State<SpinningDial>
     setState(() => _currentAngle = absoluteAngle);
   }
 
-  void handleOnPanEnd() {
-    _animationStartAngle = _currentAngle;
+  void handleOnDragEnd(DragEndDetails details) 
+  {
+    animateDetentSettle();
+  }
+
+  void animateDetentSettle() {
     var currentDetentAngle = detentAngle(widget.detent);
     if (!currentDetentAngle.isNaN) {
       if (currentDetentAngle == 0 && _currentAngle > pi) {
         currentDetentAngle = 2 * pi;
       }
-      _animationEndAngle = currentDetentAngle;
-      //print("Detent! _animationStartAngle: $_animationStartAngle     " +
-      //    "_animationEndAngle: $_animationEndAngle");
-
+      final CurvedAnimation curve =
+          CurvedAnimation(parent: positionController, curve: Curves.bounceOut);
+      animation =
+          curve.drive(Tween(begin: _currentAngle, end: currentDetentAngle));
       positionController.forward(from: 0.0);
     }
   }
