@@ -1,6 +1,7 @@
 import 'dart:ui';
 //import 'package:audioplayers/audio_cache.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'dart:math';
 import 'package:vector_math/vector_math_64.dart' as Vectors;
 
@@ -28,7 +29,8 @@ class _SpinningDialState extends State<SpinningDial>
     with TickerProviderStateMixin {
   double _currentAngle = 0;
   int _currentFrontIndex = 0;
-  AnimationController positionController;
+  AnimationController physicsController;
+  AnimationController settleController;
   Animation<double> animation;
 
   //static AudioCache player = new AudioCache();
@@ -39,25 +41,43 @@ class _SpinningDialState extends State<SpinningDial>
   void initState() {
     super.initState();
     polygon = RegularPolygon(widget.sides.length, widget.sideLength);
-    positionController = AnimationController(
+    physicsController = AnimationController(
       duration: const Duration(
         milliseconds: 100,
       ),
       vsync: this,
+      upperBound: double.infinity,
+      lowerBound: double.negativeInfinity,
+    )..addListener(() {
+        setState(() {
+          var animated = physicsController.value;
+          //print("animationValue: $animated    currentAngle: $_currentAngle");
+          _currentAngle = animated % 2 * pi;
+        });
+      });
+    settleController = AnimationController(
+      duration: const Duration(
+        milliseconds: 300,
+      ),
+      vsync: this,
     );
-    animation = positionController.drive(Tween())//We will replace this animation when it is time to animate
+
+    animation = settleController.drive(
+        Tween()) //We will replace this animation when it is time to animate
       ..addListener(() {
         setState(() {
-          var animated = animation.value;
-          print("animationValue: $animated    currentAngle: $_currentAngle");
-          _currentAngle = animated;
+          if (animation.value != null) {
+            var animated = animation.value;
+            //print("animationValue: $animated    currentAngle: $_currentAngle");
+            _currentAngle = animated;
+          }
         });
       });
   }
 
   @override
   void dispose() {
-    positionController.dispose();
+    physicsController.dispose();
     super.dispose();
   }
 
@@ -75,16 +95,25 @@ class _SpinningDialState extends State<SpinningDial>
   }
 
   void handleOnDragUpdate(double linearDelta) {
-    positionController.stop();
+    physicsController.stop();
     var rotationalDelta = calculateRotationalDelta(linearDelta);
     var absoluteAngle = (_currentAngle + rotationalDelta) % (2 * pi);
 
     setState(() => _currentAngle = absoluteAngle);
   }
 
-  void handleOnDragEnd(DragEndDetails details) 
-  {
-    animateDetentSettle();
+  void handleOnDragEnd(DragEndDetails details) {
+    if (details.primaryVelocity.abs() > 1) {
+      FrictionSimulation sim = FrictionSimulation(
+          0.05, _currentAngle, details.primaryVelocity / -100,
+          tolerance: Tolerance(velocity: 1));
+      print(details.primaryVelocity / -100);
+      physicsController.animateWith(sim).then((_) {
+        animateDetentSettle();
+      });
+    } else {
+      animateDetentSettle();
+    }
   }
 
   void animateDetentSettle() {
@@ -93,11 +122,15 @@ class _SpinningDialState extends State<SpinningDial>
       if (currentDetentAngle == 0 && _currentAngle > pi) {
         currentDetentAngle = 2 * pi;
       }
-      final CurvedAnimation curve =
-          CurvedAnimation(parent: positionController, curve: Curves.bounceOut);
-      animation =
-          curve.drive(Tween(begin: _currentAngle, end: currentDetentAngle));
-      positionController.forward(from: 0.0);
+      final CurvedAnimation curve = CurvedAnimation(
+        parent: settleController,
+        curve: Curves.easeOut,
+      );
+      animation = curve.drive(Tween(
+        begin: _currentAngle,
+        end: currentDetentAngle,
+      ));
+      settleController.forward(from: 0.0);
     }
   }
 
@@ -166,7 +199,6 @@ class _SpinningDialState extends State<SpinningDial>
       up = up + 1 < sides ? up + 1 : 0;
       down = down - 1 >= 0 ? down - 1 : sides - 1;
     }
-
     return ints.reversed
         .map((int index) => createSide(currentAngle, index))
         .toList();
