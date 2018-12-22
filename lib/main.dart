@@ -70,8 +70,8 @@ class _MyHomePageState extends State<MyHomePage> {
         color: Colors.green,
         child: Padding(
           padding: const EdgeInsets.only(top: 180.0),
-          child: SpinningDial(
-            sides: <Widget>[
+          child: SpinningDialView(
+            children: <Widget>[
               createFace(0),
               createFace(1),
               createFace(2),
@@ -79,8 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
               createFace(4),
               createFace(5),
             ],
-            sideLength: 75.0,
-            onChanged: (int newValue) {
+            itemExtent: 75.0,
+            onSelectedItemChanged: (int newValue) {
                 _value = newValue.round();
                 print(_value);
             },

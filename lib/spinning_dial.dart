@@ -1,5 +1,4 @@
-import 'dart:ui';
-//import 'package:audioplayers/audio_cache.dart';
+import 'package:audioplayers/audio_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'dart:math';
@@ -7,40 +6,81 @@ import 'package:vector_math/vector_math_64.dart' as Vectors;
 
 enum Detent { none, small, medium, large }
 
-class SpinningDial extends StatefulWidget {
-  final List<Widget> sides;
-  final double sideLength;
-  final double detent;
-  final ValueChanged<int> onChanged;
+class SpinningDialView extends StatefulWidget {
+  //this.detent = 1.00, -> need to add this to physics
+  //final double detent;
 
-  SpinningDial(
-      {Key key,
-      @required this.sides,
-      @required this.sideLength,
-      this.detent = 1.00,
-      @required this.onChanged})
-      : super(key: key);
+  SpinningDialView({
+    Key key,
+    this.controller,
+    this.physics,
+    @required this.itemExtent,
+    this.onSelectedItemChanged,
+    @required this.children,
+    this.axis = Axis.horizontal,
+  })  : assert(children != null),
+        assert(itemExtent != null),
+        assert(itemExtent > 0),
+        super(key: key);
+
+
+  /// Typically a [FixedExtentScrollController] used to control the current item.
+  ///
+  /// A [FixedExtentScrollController] can be used to read the currently
+  /// selected/centered child item and can be used to change the current item.
+  ///
+  /// If none is provided, a new [FixedExtentScrollController] is implicitly
+  /// created.
+  ///
+  /// If a [ScrollController] is used instead of [FixedExtentScrollController],
+  /// [ScrollNotification.metrics] will no longer provide [FixedExtentMetrics]
+  /// to indicate the current item index and [onSelectedItemChanged] will not
+  /// work.
+  ///
+  /// To read the current selected item only when the value changes, use
+  /// [onSelectedItemChanged].
+  final ScrollController controller;
+
+  /// How the scroll view should respond to user input.
+  ///
+  /// For example, determines how the scroll view continues to animate after the
+  /// user stops dragging the scroll view.
+  ///
+  /// Defaults to matching platform conventions.
+  final ScrollPhysics physics;
+
+  /// Size of each child in the main axis. Must not be null and must be
+  /// positive.
+  final double itemExtent;
+
+  /// On optional listener that's called when the centered item changes.
+  final ValueChanged<int> onSelectedItemChanged;
+
+  /// A list of the child faces.
+  final List<Widget> children;
+
+  /// Define a main axis of scrolling
+  final Axis axis;
 
   @override
-  _SpinningDialState createState() => _SpinningDialState();
+  _SpinningDialViewState createState() => _SpinningDialViewState();
 }
 
-class _SpinningDialState extends State<SpinningDial>
+class _SpinningDialViewState extends State<SpinningDialView>
     with TickerProviderStateMixin {
   double _currentAngle = 0;
   int _currentFrontIndex = 0;
   AnimationController physicsController;
   AnimationController settleController;
   Animation<double> animation;
-
-  //static AudioCache player = new AudioCache();
+  static AudioCache player = new AudioCache();
   RegularPolygon polygon;
   bool isInDetent = true;
 
   @override
   void initState() {
     super.initState();
-    polygon = RegularPolygon(widget.sides.length, widget.sideLength);
+    polygon = RegularPolygon(widget.children.length, widget.itemExtent);
     physicsController = AnimationController(
       duration: const Duration(
         milliseconds: 100,
@@ -104,12 +144,17 @@ class _SpinningDialState extends State<SpinningDial>
 
   void handleOnDragEnd(DragEndDetails details) {
     if (details.primaryVelocity.abs() > 1) {
+      var sims = ClampingScrollSimulation(
+          position: _currentAngle,
+          velocity: details.primaryVelocity / -90,
+          friction: 0.1,
+          tolerance: Tolerance(velocity: 0.1));
       FrictionSimulation sim = FrictionSimulation(
-          0.05, _currentAngle, details.primaryVelocity / -100,
-          tolerance: Tolerance(velocity: 1));
+          0.05, _currentAngle, details.primaryVelocity / -200,
+          tolerance: Tolerance(velocity: 0.1));
       print(details.primaryVelocity / -100);
-      physicsController.animateWith(sim).then((_) {
-        animateDetentSettle();
+      physicsController.animateWith(sims).then((_) {
+        //animateDetentSettle();
       });
     } else {
       animateDetentSettle();
@@ -124,7 +169,7 @@ class _SpinningDialState extends State<SpinningDial>
       }
       final CurvedAnimation curve = CurvedAnimation(
         parent: settleController,
-        curve: Curves.easeOut,
+        curve: Curves.ease,
       );
       animation = curve.drive(Tween(
         begin: _currentAngle,
@@ -166,12 +211,12 @@ class _SpinningDialState extends State<SpinningDial>
   }
 
   void doClick(double currentAngle) {
-    if (!isInDetent && !detentAngle(0.1).isNaN) {
+    if (!isInDetent && !detentAngle(0.3).isNaN) {
       print('click');
-      //player.play("assets/click.mp3");
+      player.play("clamp_2.mp3", volume: 0.2);
       isInDetent = true;
     }
-    if (isInDetent && detentAngle(0.1).isNaN) {
+    if (isInDetent && detentAngle(0.3).isNaN) {
       isInDetent = false;
       print('unclick');
     }
@@ -182,7 +227,7 @@ class _SpinningDialState extends State<SpinningDial>
     //determine starting point
     var frontIndex = determineFrontSide(currentAngle);
     if (frontIndex != _currentFrontIndex) {
-      widget.onChanged(frontIndex);
+      widget.onSelectedItemChanged(frontIndex);
       _currentFrontIndex = frontIndex;
     }
     doClick(currentAngle);
@@ -231,7 +276,7 @@ class _SpinningDialState extends State<SpinningDial>
         ..translate(calculateLinearOffset(currentAngle, index))
         ..rotateX(calculateRotationOffset(currentAngle, index)),
       alignment: Alignment.center,
-      child: this.widget.sides[index],
+      child: this.widget.children[index],
     );
   }
 
