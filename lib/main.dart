@@ -70,20 +70,70 @@ class _MyHomePageState extends State<MyHomePage> {
         color: Colors.green,
         child: Padding(
           padding: const EdgeInsets.only(top: 180.0),
-          child: SpinningDialView(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-              createFace(0),
-              createFace(1),
-              createFace(2),
-              createFace(3),
-              createFace(4),
-              createFace(5),
+              SpinningDialView(
+                children: <Widget>[
+                  createFace(0),
+                  createFace(1),
+                  createFace(2),
+                  createFace(3),
+                  createFace(4),
+                  createFace(5),
+                ],
+                itemExtent: 75.0,
+                onSelectedItemChanged: (int newValue) {
+                    _value = newValue.round();
+                    print(_value);
+                },
+              ),
+              SpinningDialView(
+                children: <Widget>[
+                  createFace(0),
+                  createFace(1),
+                  createFace(2),
+                  createFace(3),
+                  createFace(4),
+                  createFace(5),
+                ],
+                itemExtent: 75.0,
+                onSelectedItemChanged: (int newValue) {
+                    _value = newValue.round();
+                    print(_value);
+                },
+              ),
+              SpinningDialView(
+                children: <Widget>[
+                  createFace(0),
+                  createFace(1),
+                  createFace(2),
+                  createFace(3),
+                  createFace(4),
+                  createFace(5),
+                ],
+                itemExtent: 75.0,
+                onSelectedItemChanged: (int newValue) {
+                    _value = newValue.round();
+                    print(_value);
+                },
+              ),
+              SpinningDialView(
+                children: <Widget>[
+                  createFace(0),
+                  createFace(1),
+                  createFace(2),
+                  createFace(3),
+                  createFace(4),
+                  createFace(5),
+                ],
+                itemExtent: 75.0,
+                onSelectedItemChanged: (int newValue) {
+                    _value = newValue.round();
+                    print(_value);
+                },
+              ),
             ],
-            itemExtent: 75.0,
-            onSelectedItemChanged: (int newValue) {
-                _value = newValue.round();
-                print(_value);
-            },
           ),
         ),
       ),
