@@ -74,9 +74,9 @@ class _SpinningDialViewState extends State<SpinningDialView>
     dialController = widget.controller ??
         DialController();
         if(dialController.position == null){
-          dialController.position = dialController.createDialPosition(this, polygon);
+          dialController.attach(dialController.createDialPosition(this, polygon));
         }
-      dialController..addListener(() {
+      dialController.addListener(() {
         setState(() {
           print("DialPosition changed");
           _currentAngle = dialController.position.currentAngle;
@@ -180,29 +180,30 @@ class DialController extends ChangeNotifier {
   DialController()
       : super();
 
-  DialPosition position;
+  DialPosition _position;
+  DialPosition get  position => _position;
   int _previousSelectedItem;
 
   @override
   void dispose() {
-    position.dispose();
+    _position.dispose();
     super.dispose();
   }
 
   void attach(DialPosition dialPosition){
-    position = dialPosition;
-    position.addListener(() {
+    _position = dialPosition;
+    _position.addListener(() {
       positionChanged();
     });
   }
   void detach(DialPosition dialPosition){
-    position = dialPosition;
-    position.addListener(() {
+    _position = dialPosition;
+    _position.addListener(() {
       positionChanged();
     });
   }
   int get selectedItem {
-    return position.itemIndex;
+    return _position.itemIndex;
   }
 
   void positionChanged() {
@@ -220,11 +221,11 @@ class DialController extends ChangeNotifier {
    }
 
   void moveOffset(double linearDelta) {
-    position.handleDragUpdate(linearDelta);
+    _position.handleDragUpdate(linearDelta);
   }
 
   void moveEnd(double linearVelocity) {
-    position.hangleDragEnd(linearVelocity);
+    _position.hangleDragEnd(linearVelocity);
   }
 }
 
