@@ -61,6 +61,14 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  DialController controller;
+
+  @override
+  void initState() {
+    controller = DialController();
+    super.initState();
+  }
+
   int _value;
   @override
   Widget build(BuildContext context) {
@@ -84,8 +92,25 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
                 itemExtent: 75.0,
                 onSelectedItemChanged: (int newValue) {
-                    _value = newValue.round();
-                    print(_value);
+                  _value = newValue.round();
+                  print(_value);
+                  print("Controller value: ${controller.selectedItem}");
+                },
+                controller: controller,
+              ),
+              SpinningDialView(
+                children: <Widget>[
+                  createFace(0),
+                  createFace(1),
+                  createFace(2),
+                  createFace(3),
+                  createFace(4),
+                  createFace(5),
+                ],
+                itemExtent: 75.0,
+                onSelectedItemChanged: (int newValue) {
+                  _value = newValue.round();
+                  print(_value);
                 },
               ),
               SpinningDialView(
@@ -99,8 +124,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
                 itemExtent: 75.0,
                 onSelectedItemChanged: (int newValue) {
-                    _value = newValue.round();
-                    print(_value);
+                  _value = newValue.round();
+                  print(_value);
                 },
               ),
               SpinningDialView(
@@ -114,23 +139,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
                 itemExtent: 75.0,
                 onSelectedItemChanged: (int newValue) {
-                    _value = newValue.round();
-                    print(_value);
-                },
-              ),
-              SpinningDialView(
-                children: <Widget>[
-                  createFace(0),
-                  createFace(1),
-                  createFace(2),
-                  createFace(3),
-                  createFace(4),
-                  createFace(5),
-                ],
-                itemExtent: 75.0,
-                onSelectedItemChanged: (int newValue) {
-                    _value = newValue.round();
-                    print(_value);
+                  _value = newValue.round();
+                  print(_value);
                 },
               ),
             ],

@@ -72,8 +72,11 @@ class _SpinningDialViewState extends State<SpinningDialView>
     polygon = RegularPolygon(widget.children.length, widget.itemExtent);
 
     dialController = widget.controller ??
-        DialController(DialPosition(this, polygon), polygon)
-      ..addListener(() {
+        DialController();
+        if(dialController.position == null){
+          dialController.position = dialController.createDialPosition(this, polygon);
+        }
+      dialController..addListener(() {
         setState(() {
           print("DialPosition changed");
           _currentAngle = dialController.position.currentAngle;
@@ -84,7 +87,6 @@ class _SpinningDialViewState extends State<SpinningDialView>
   @override
   void dispose() {
     dialController.dispose();
-
     super.dispose();
   }
 
@@ -175,38 +177,32 @@ class _SpinningDialViewState extends State<SpinningDialView>
 }
 
 class DialController extends ChangeNotifier {
-  DialController(this.position, this.polygon, {this.onSelectedItemChanged})
-      : super() {
+  DialController()
+      : super();
+
+  DialPosition position;
+  int _previousSelectedItem;
+
+  @override
+  void dispose() {
+    position.dispose();
+    super.dispose();
+  }
+
+  void attach(DialPosition dialPosition){
+    position = dialPosition;
     position.addListener(() {
       positionChanged();
     });
   }
-
-  final RegularPolygon polygon;
-  DialPosition position;
-  int _previousSelectedItem;
-  final ValueChanged<int> onSelectedItemChanged;
-
-@override 
-void dispose(){
-  position.dispose();
-  super.dispose();
-}
+  void detach(DialPosition dialPosition){
+    position = dialPosition;
+    position.addListener(() {
+      positionChanged();
+    });
+  }
   int get selectedItem {
-    var frontIndex = 0;
-    var sides = polygon.sides;
-    //If it is the first side, we will skip the for loop
-    if (position.currentAngle < (sides * 2 - 1) * pi / sides &&
-        position.currentAngle >= pi / sides) {
-      for (var i = 1; i < (sides * 2) - 1; i = i + 2) {
-        frontIndex++;
-        if (position.currentAngle > i * pi / sides &&
-            position.currentAngle < (i + 2) * pi / sides) {
-          return frontIndex;
-        }
-      }
-    }
-    return frontIndex;
+    return position.itemIndex;
   }
 
   void positionChanged() {
@@ -215,23 +211,20 @@ void dispose(){
     var frontIndex = selectedItem;
 
     if (frontIndex != _previousSelectedItem) {
-      if (onSelectedItemChanged != null) {
-        onSelectedItemChanged(frontIndex);
-      }
       _previousSelectedItem = frontIndex;
     }
   }
 
-  // DialPosition createDialPosition(TickerProvider context) {
-  //   return DialPosition(context, polygon);
-  // }
+  DialPosition createDialPosition(TickerProvider context, RegularPolygon polygon) {
+     return DialPosition(context, polygon);
+   }
 
   void moveOffset(double linearDelta) {
-    position.moveOffset(linearDelta);
+    position.handleDragUpdate(linearDelta);
   }
 
   void moveEnd(double linearVelocity) {
-    position.moveEnd(linearVelocity);
+    position.hangleDragEnd(linearVelocity);
   }
 }
 
@@ -279,11 +272,13 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   @override
-  void dispose(){
+  void dispose() {
     physicsController.dispose();
     settleController.dispose();
     super.dispose();
   }
+
+
   double get currentAngle => value;
 
   set currentAngle(double newAngle) {
@@ -292,16 +287,32 @@ class DialPosition extends ValueNotifier<double> {
     value = newAngle;
   }
 
-  void moveOffset(double linearDelta) {
+  int get itemIndex {
+    var frontIndex = 0;
+    var sides = polygon.sides;
+    //If it is the first side, we will skip the for loop
+    if (currentAngle < (sides * 2 - 1) * pi / sides &&
+        currentAngle >= pi / sides) {
+      for (var i = 1; i < (sides * 2) - 1; i = i + 2) {
+        frontIndex++;
+        if (currentAngle > i * pi / sides &&
+            currentAngle < (i + 2) * pi / sides) {
+          return frontIndex;
+        }
+      }
+    }
+    return frontIndex;
+  }
+  void handleDragUpdate(double linearDelta) {
     print("moveOffset: $linearDelta");
     physicsController.stop();
-    var rotationalDelta = calculateRotationalDelta(linearDelta);
+    var rotationalDelta = calculateAngularDelta(linearDelta) * -1; //drag is opposite direction of movement on screen
     var absoluteAngle = (currentAngle + rotationalDelta) % (2 * pi);
 
     currentAngle = absoluteAngle;
   }
 
-  void moveEnd(double linearVelocity) {
+  void hangleDragEnd(double linearVelocity) {
     print("moveEnd: $linearVelocity");
     if (linearVelocity.abs() > 1) {
       FrictionSimulation sim = FrictionSimulation(
@@ -336,7 +347,7 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   double detentAngle(double detentPercent) {
-    var frontSideAngle = selectedItem * 2 * pi / polygon.sides;
+    var frontSideAngle = itemIndex * 2 * pi / polygon.sides;
     var detentOffset = polygon.exteriorAngle * detentPercent / 2;
 
     var positiveOffset = frontSideAngle + detentOffset;
@@ -358,24 +369,6 @@ class DialPosition extends ValueNotifier<double> {
     return double.nan;
   }
 
-  int get selectedItem {
-    //determine starting point
-    var frontIndex = 0;
-    var sides = polygon.sides;
-    //If it is the first side, we will skip the for loop
-    if (currentAngle < (sides * 2 - 1) * pi / sides &&
-        currentAngle >= pi / sides) {
-      for (var i = 1; i < (sides * 2) - 1; i = i + 2) {
-        frontIndex++;
-        if (currentAngle > i * pi / sides &&
-            currentAngle < (i + 2) * pi / sides) {
-          return frontIndex;
-        }
-      }
-    }
-    return frontIndex;
-  }
-
   void checkDetent(double currentAngle) {
     if (!isInDetent && !detentAngle(detent).isNaN) {
       print('click');
@@ -391,11 +384,10 @@ class DialPosition extends ValueNotifier<double> {
     }
   }
 
-  double calculateRotationalDelta(double linearDelta) {
-    double angleDelta = -0.5 * (linearDelta);
-    double radDelta = angleDelta * pi / 180;
-
-    return radDelta;
+  double calculateAngularDelta(double linearDelta) {
+    //Assume that the linear movement = movement along the circumference. So, 100 pixels of movement on screen translates to 100 "pixels" of circumference movement on dial
+    //If we try to translate from linear to 
+    return linearDelta/polygon.radius;
   }
 }
 
@@ -422,4 +414,6 @@ class RegularPolygon {
 
   //Distance from polygon center to vertex
   double get radius => sideLength / (2 * sin(pi / sides));
+
+  double get circumference => 2 * pi * radius;
 }
