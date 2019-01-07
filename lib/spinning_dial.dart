@@ -62,26 +62,34 @@ class SpinningDialView extends StatefulWidget {
 class _SpinningDialViewState extends State<SpinningDialView>
     with TickerProviderStateMixin {
   double _currentAngle = 0;
-  RegularPolygon polygon;
+  RegularPolygon _polygon;
   DialController dialController;
-  DialPosition position;
+  DialPosition _position;
+  int _previousStateItemIndex = 0;
+  bool _previousStateIsInDetent = true;
 
   @override
   void initState() {
     super.initState();
-    polygon = RegularPolygon(widget.children.length, widget.itemExtent);
+    _polygon = RegularPolygon(widget.children.length, widget.itemExtent);
 
-    dialController = widget.controller ??
-        DialController();
-        if(dialController.position == null){
-          dialController.attach(dialController.createDialPosition(this, polygon));
-        }
-      dialController.addListener(() {
-        setState(() {
-          print("DialPosition changed");
-          _currentAngle = dialController.position.currentAngle;
-        });
+    dialController = widget.controller ?? DialController();
+    if (dialController.position == null) {
+      dialController.attach(
+        dialController.createDialPosition(
+          this,
+          _polygon,
+          detentPercent: widget.detent,
+        ),
+      );
+    }
+    dialController.addListener(() {
+      _updateDialPosition(dialController.position.currentAngle);
+      setState(() {
+        _currentAngle = dialController.position.currentAngle;
       });
+    });
+    _position = dialController.position;
   }
 
   @override
@@ -105,6 +113,52 @@ class _SpinningDialViewState extends State<SpinningDialView>
     );
   }
 
+  void _updateDialPosition(double newAngle) {
+    //print("_currentAngle: $newAngle");
+    //Determine which item is facing forward
+    var currentStateItemIndex = _position.itemIndex;
+    //print("currentStateItemIndex: $currentStateItemIndex");
+
+    //Determine if dial forward item changed
+    var currentItemIndexChanged =
+        _position.itemIndex != _previousStateItemIndex;
+    //print("currentItemIndexChanged: $currentItemIndexChanged");
+
+    //Determine if dial is in detent on front item
+    var currentStateIsInDetent = _position.isInDetent();
+    //print("currentStateIsInDetent: $currentStateIsInDetent");
+
+    //Determine if dial left the previous detent. This will either be because
+    //the dial was in a detent and it no longer is, or it is in detent
+    //but the item index changed (this happens if detentPercent is 1.0).
+    var exitedDetent = (!currentStateIsInDetent && _previousStateIsInDetent) ||
+        (currentStateIsInDetent && currentItemIndexChanged);
+    //print("exitedDetent: $exitedDetent");
+
+    //Determine if dial entered the current detent. This will either be because the
+    //dial was not in a detent and now it is, or it was in a detent by the item
+    //index changed (this happens is detentPercent is 1.0)
+    var enteredDetent = (currentStateIsInDetent && !_previousStateIsInDetent) ||
+        (_previousStateIsInDetent && currentItemIndexChanged);
+    //print("enteredDetent: $enteredDetent");
+
+    if (currentItemIndexChanged && widget.onSelectedItemChanged != null) {
+      widget.onSelectedItemChanged(_position.itemIndex);
+    }
+
+    if (exitedDetent && widget.onDetentExit != null) {
+      widget.onDetentExit();
+    }
+
+    if (enteredDetent && widget.onDetentEnter != null) {
+      widget.onDetentEnter();
+    }
+
+    _previousStateItemIndex = currentStateItemIndex;
+
+    _previousStateIsInDetent = currentStateIsInDetent;
+  }
+
   List<Widget> constructStack(double currentAngle) {
     var sides = generatePaintOrder();
     sides = removeNonpaintedSides(currentAngle, sides);
@@ -114,7 +168,7 @@ class _SpinningDialViewState extends State<SpinningDialView>
   }
 
   List<int> generatePaintOrder() {
-    var sideCount = polygon.sides;
+    var sideCount = _polygon.sides;
     var frontSide = dialController.selectedItem;
 
     var sides = new List<int>(sideCount);
@@ -145,7 +199,6 @@ class _SpinningDialViewState extends State<SpinningDialView>
         finalList.remove(i);
       }
     }
-    print("finalList: $finalList");
     return finalList;
   }
 
@@ -162,26 +215,25 @@ class _SpinningDialViewState extends State<SpinningDialView>
   }
 
   double calculateRotationOffset(double currentAngle, int index) {
-    return -1 * (currentAngle - index * polygon.exteriorAngle);
+    return -1 * (currentAngle - index * _polygon.exteriorAngle);
   }
 
   Vectors.Vector3 calculateLinearOffset(double currentAngle, int index) {
     //Represents the angle of the apothem of this specific side from 0.0
-    var indexedAngle = currentAngle - index * polygon.exteriorAngle;
+    var indexedAngle = currentAngle - index * _polygon.exteriorAngle;
 
-    double y = -1 * sin(indexedAngle) * polygon.apothem;
-    double z = -1 * cos(indexedAngle) * polygon.apothem;
+    double y = -1 * sin(indexedAngle) * _polygon.apothem;
+    double z = -1 * cos(indexedAngle) * _polygon.apothem;
 
     return new Vectors.Vector3(0, y, z);
   }
 }
 
 class DialController extends ChangeNotifier {
-  DialController()
-      : super();
+  DialController() : super();
 
   DialPosition _position;
-  DialPosition get  position => _position;
+  DialPosition get position => _position;
   int _previousSelectedItem;
 
   @override
@@ -190,24 +242,26 @@ class DialController extends ChangeNotifier {
     super.dispose();
   }
 
-  void attach(DialPosition dialPosition){
+  void attach(DialPosition dialPosition) {
     _position = dialPosition;
     _position.addListener(() {
       positionChanged();
     });
   }
-  void detach(DialPosition dialPosition){
+
+  void detach(DialPosition dialPosition) {
     _position = dialPosition;
     _position.addListener(() {
       positionChanged();
     });
   }
+
   int get selectedItem {
-    return _position.itemIndex;
+    
+    return _position != null ? _position.itemIndex: null;
   }
 
   void positionChanged() {
-    print('positionChanged');
     notifyListeners();
     var frontIndex = selectedItem;
 
@@ -216,9 +270,17 @@ class DialController extends ChangeNotifier {
     }
   }
 
-  DialPosition createDialPosition(TickerProvider context, RegularPolygon polygon) {
-     return DialPosition(context, polygon);
-   }
+  DialPosition createDialPosition(
+    TickerProvider context,
+    RegularPolygon polygon, {
+    double detentPercent = 1.0,
+  }) {
+    return DialPosition(
+      context,
+      polygon,
+      detentPercent: detentPercent,
+    );
+  }
 
   void moveOffset(double linearDelta) {
     _position.handleDragUpdate(linearDelta);
@@ -234,17 +296,16 @@ class DialPosition extends ValueNotifier<double> {
   AnimationController settleController;
   Animation settleAnimation;
   final RegularPolygon polygon;
-  final double detent;
-  final Function onDetentEnter;
-  final Function onDetentExit;
-  bool isInDetent = true;
+  final double detentPercent;
+  bool _previousStateIsInDetent = true;
+  int _previousStateItemIndex = 0;
 
-  DialPosition(TickerProvider state, this.polygon,
-      {this.detent = 1.00,
-      this.onDetentEnter,
-      this.onDetentExit,
-      double initialPosition})
-      : super(initialPosition ?? 0.0) {
+  DialPosition(
+    TickerProvider state,
+    this.polygon, {
+    this.detentPercent = 1.00,
+    double initialPosition,
+  }) : super(initialPosition ?? 0.0) {
     physicsController = AnimationController(
       duration: const Duration(
         milliseconds: 100,
@@ -253,7 +314,7 @@ class DialPosition extends ValueNotifier<double> {
       upperBound: double.infinity,
       lowerBound: double.negativeInfinity,
     )..addListener(() {
-        currentAngle = physicsController.value % 2 * pi;
+        currentAngle = physicsController.value % (2 * pi);
       });
 
     settleController = AnimationController(
@@ -279,15 +340,15 @@ class DialPosition extends ValueNotifier<double> {
     super.dispose();
   }
 
-
+  /// The angle of the polygon that is pointing directly towards the screen.
   double get currentAngle => value;
 
+  /// The angle of the polygon that is pointing directly towards the screen.
   set currentAngle(double newAngle) {
-    checkDetent(newAngle);
-    print("angle changed: $newAngle");
     value = newAngle;
   }
 
+  ///The item that is facing towards the user
   int get itemIndex {
     var frontIndex = 0;
     var sides = polygon.sides;
@@ -304,22 +365,22 @@ class DialPosition extends ValueNotifier<double> {
     }
     return frontIndex;
   }
+
   void handleDragUpdate(double linearDelta) {
-    print("moveOffset: $linearDelta");
-    physicsController.stop();
-    var rotationalDelta = calculateAngularDelta(linearDelta) * -1; //drag is opposite direction of movement on screen
+    //print("*******************moveOffset: $linearDelta");
+    var rotationalDelta = calculateAngularDelta(linearDelta) *
+        -1; //drag is opposite direction of movement on screen
     var absoluteAngle = (currentAngle + rotationalDelta) % (2 * pi);
 
     currentAngle = absoluteAngle;
   }
 
   void hangleDragEnd(double linearVelocity) {
-    print("moveEnd: $linearVelocity");
-    if (linearVelocity.abs() > 1) {
+    //print("*******************moveEnd: $linearVelocity");
+    if (linearVelocity.abs() > 200) {
       FrictionSimulation sim = FrictionSimulation(
           0.05, currentAngle, linearVelocity / -200,
-          tolerance: Tolerance(velocity: 0.1));
-      print(linearVelocity / -100);
+          tolerance: Tolerance(velocity: 1));
       physicsController.animateWith(sim).then((_) {
         animateDetentSettle();
       });
@@ -329,11 +390,11 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   void animateDetentSettle() {
-    print("animating detent settle");
-    var currentDetentAngle = detentAngle(detent);
-    if (!currentDetentAngle.isNaN) {
-      if (currentDetentAngle == 0 && currentAngle > pi) {
-        currentDetentAngle = 2 * pi;
+    //print("*******************animating detent settle");
+    var angleOfSide = polygon.angleOfSide(itemIndex);
+    if (isInDetent()) {
+      if (angleOfSide == 0 && currentAngle > pi) {
+        angleOfSide = 2 * pi;
       }
       final CurvedAnimation curve = CurvedAnimation(
         parent: settleController,
@@ -341,54 +402,46 @@ class DialPosition extends ValueNotifier<double> {
       );
       settleAnimation = curve.drive(Tween(
         begin: currentAngle,
-        end: currentDetentAngle,
+        end: angleOfSide,
       ));
       settleController.forward(from: 0.0);
     }
   }
 
-  double detentAngle(double detentPercent) {
-    var frontSideAngle = itemIndex * 2 * pi / polygon.sides;
-    var detentOffset = polygon.exteriorAngle * detentPercent / 2;
-
-    var positiveOffset = frontSideAngle + detentOffset;
-    var negativeOffset = frontSideAngle - detentOffset;
-    if (negativeOffset < 0 || positiveOffset > 2 * pi) {
-      if (negativeOffset < 0) {
-        negativeOffset = 2 * pi - negativeOffset.abs();
-      }
-      if (positiveOffset > 2 * pi) {
-        positiveOffset = positiveOffset - 2 * pi;
-      }
-      if ((currentAngle > negativeOffset) || (currentAngle < positiveOffset)) {
-        return frontSideAngle;
-      }
-    }
-    if ((currentAngle > negativeOffset) && (currentAngle < positiveOffset)) {
-      return frontSideAngle;
-    }
-    return double.nan;
+  bool isInDetent() {
+    var negOffset = _detentNegativeOffsetAngle();
+    var posOffset = _detentPositiveOffsetAngle();
+    return (itemIndex > 0 &&
+            (currentAngle > negOffset) &&
+            (currentAngle < posOffset)) ||
+        (itemIndex == 0 &&
+            ((currentAngle > negOffset) || (currentAngle < posOffset)));
   }
 
-  void checkDetent(double currentAngle) {
-    if (!isInDetent && !detentAngle(detent).isNaN) {
-      print('click');
-      if (onDetentEnter != null) {
-        onDetentEnter();
+  double _detentPositiveOffsetAngle() {
+    var offset = polygon.angleOfSide(itemIndex) +
+        polygon.exteriorAngle * detentPercent / 2;
+    if (offset > 2 * pi) {
+      offset = offset - 2 * pi;
+    }
+    return offset;
+  }
+
+  double _detentNegativeOffsetAngle() {
+    var offset = polygon.angleOfSide(itemIndex) -
+        polygon.exteriorAngle * detentPercent / 2;
+    if (offset < 0) {
+      if (offset < 0) {
+        offset = 2 * pi - offset.abs();
       }
     }
-    if (isInDetent && detentAngle(detent).isNaN) {
-      isInDetent = false;
-      if (onDetentExit != null) {
-        onDetentExit();
-      }
-    }
+    return offset;
   }
 
   double calculateAngularDelta(double linearDelta) {
     //Assume that the linear movement = movement along the circumference. So, 100 pixels of movement on screen translates to 100 "pixels" of circumference movement on dial
-    //If we try to translate from linear to 
-    return linearDelta/polygon.radius;
+    //If we try to translate from linear to
+    return linearDelta / polygon.radius;
   }
 }
 
@@ -404,17 +457,25 @@ class RegularPolygon {
       : assert(sides > 0),
         assert(sideLength > 0);
 
-  //Angle between two lines that connect to both vertices of a side
-  double get exteriorAngle => pi - interiorAngle;
+  ///Angle between two lines that connect to both vertices of a side
+  double get exteriorAngle => 2 * pi / sides;
 
-  //Angle between two adjacent sides
-  double get interiorAngle => pi * (sides - 2) / sides;
+  ///Angle between two adjacent sides
+  double get interiorAngle => pi - exteriorAngle;
 
-  //Distance from polygon center to middle of a side
+  ///Distance from polygon center to middle of a side
   double get apothem => sideLength / (2 * tan(pi / sides));
 
-  //Distance from polygon center to vertex
+  ///Distance from polygon center to vertex
   double get radius => sideLength / (2 * sin(pi / sides));
 
+  ///circumference of circle created by radius
   double get circumference => 2 * pi * radius;
+
+  ///returns the angle of the apothem of a given side measured from 0
+  ///assumes the apothem of sideIndex 0 is 0 rad.
+  ///Example: the angle for the apothem of of side 3 on a six sided polygon is pi
+  double angleOfSide(int sideIndex) {
+    return sideIndex * exteriorAngle;
+  }
 }
