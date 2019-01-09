@@ -75,21 +75,28 @@ class _SpinningDialViewState extends State<SpinningDialView>
 
     dialController = widget.controller ?? DialController();
     if (dialController.position == null) {
-      dialController.attach(
-        dialController.createDialPosition(
-          this,
-          _polygon,
-          detentPercent: widget.detent,
-        ),
+      _position = dialController.createDialPosition(
+        this,
+        _polygon,
+        detentPercent: widget.detent,
       );
+      dialController.attach(_position);
     }
+
     dialController.addListener(() {
       _updateDialPosition(dialController.position.currentAngle);
       setState(() {
         _currentAngle = dialController.position.currentAngle;
       });
     });
-    _position = dialController.position;
+  }
+
+  @override
+  void didUpdateWidget(SpinningDialView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _polygon = RegularPolygon(widget.children.length, widget.itemExtent);
+    _position.polygon = _polygon;
+    _position.detent = widget.detent;
   }
 
   @override
@@ -101,14 +108,17 @@ class _SpinningDialViewState extends State<SpinningDialView>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       // new
       onVerticalDragUpdate: (details) =>
           dialController.moveOffset(details.delta.dy),
       onVerticalDragEnd: (details) =>
           dialController.moveEnd(details.primaryVelocity),
-      behavior: HitTestBehavior.deferToChild,
-      child: Stack(
-        children: constructStack(_currentAngle),
+      child: Container(
+        height: _polygon.radius * 2,
+        child: Stack(
+          children: constructStack(_currentAngle),
+        ),
       ),
     );
   }
@@ -257,8 +267,7 @@ class DialController extends ChangeNotifier {
   }
 
   int get selectedItem {
-    
-    return _position != null ? _position.itemIndex: null;
+    return _position != null ? _position.itemIndex : null;
   }
 
   void positionChanged() {
@@ -278,7 +287,7 @@ class DialController extends ChangeNotifier {
     return DialPosition(
       context,
       polygon,
-      detentPercent: detentPercent,
+      detent: detentPercent,
     );
   }
 
@@ -295,15 +304,15 @@ class DialPosition extends ValueNotifier<double> {
   AnimationController physicsController;
   AnimationController settleController;
   Animation settleAnimation;
-  final RegularPolygon polygon;
-  final double detentPercent;
+  RegularPolygon polygon;
+  double detent;
   bool _previousStateIsInDetent = true;
   int _previousStateItemIndex = 0;
 
   DialPosition(
     TickerProvider state,
     this.polygon, {
-    this.detentPercent = 1.00,
+    this.detent = 1.00,
     double initialPosition,
   }) : super(initialPosition ?? 0.0) {
     physicsController = AnimationController(
@@ -390,7 +399,7 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   void animateDetentSettle() {
-    //print("*******************animating detent settle");
+    //print("*******************checking detent");
     var angleOfSide = polygon.angleOfSide(itemIndex);
     if (isInDetent()) {
       if (angleOfSide == 0 && currentAngle > pi) {
@@ -404,6 +413,8 @@ class DialPosition extends ValueNotifier<double> {
         begin: currentAngle,
         end: angleOfSide,
       ));
+      //print("*******************animating detent settle");
+
       settleController.forward(from: 0.0);
     }
   }
@@ -420,7 +431,7 @@ class DialPosition extends ValueNotifier<double> {
 
   double _detentPositiveOffsetAngle() {
     var offset = polygon.angleOfSide(itemIndex) +
-        polygon.exteriorAngle * detentPercent / 2;
+        polygon.exteriorAngle * detent / 2;
     if (offset > 2 * pi) {
       offset = offset - 2 * pi;
     }
@@ -429,7 +440,7 @@ class DialPosition extends ValueNotifier<double> {
 
   double _detentNegativeOffsetAngle() {
     var offset = polygon.angleOfSide(itemIndex) -
-        polygon.exteriorAngle * detentPercent / 2;
+        polygon.exteriorAngle * detent / 2;
     if (offset < 0) {
       if (offset < 0) {
         offset = 2 * pi - offset.abs();

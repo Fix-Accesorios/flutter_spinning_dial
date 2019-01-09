@@ -26,7 +26,7 @@ Widget createFace(int index) {
       child: Container(
         key: Key(key),
         color: colors[index],
-        padding: EdgeInsets.all(10.0),
+        padding: EdgeInsets.fromLTRB(20.0, 30.0, 20.0, 30.0),
         child: Text(
           key,
           key: Key(key),
@@ -83,10 +83,10 @@ class _MyHomePageState extends State<MyHomePage> {
             Padding(
               padding: const EdgeInsets.only(top: 180.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
                   SpinningDialView(
-                    detent: 0.8,
+                    detent: 1.0,
                     children: <Widget>[
                       createFace(0),
                       createFace(1),
@@ -96,10 +96,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       createFace(5),
                       createFace(6),
                       createFace(7),
-                      createFace(8),
-                      createFace(9),
                     ],
-                    itemExtent: 55.0,
+                    itemExtent: 83.0,
                     onSelectedItemChanged: (int newValue) {
                       setState(() {
                         num = newValue;
@@ -113,39 +111,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       //print("Dentent Exit");
                     },
                     controller: controller,
-                  ),
-                  SpinningDialView(
-                    children: <Widget>[
-                      createFace(0),
-                      createFace(1),
-                      createFace(2),
-                      createFace(3),
-                      createFace(4),
-                      createFace(5),
-                    ],
-                    itemExtent: 75.0,
-                  ),
-                  SpinningDialView(
-                    children: <Widget>[
-                      createFace(0),
-                      createFace(1),
-                      createFace(2),
-                      createFace(3),
-                      createFace(4),
-                      createFace(5),
-                    ],
-                    itemExtent: 75.0,
-                  ),
-                  SpinningDialView(
-                    children: <Widget>[
-                      createFace(0),
-                      createFace(1),
-                      createFace(2),
-                      createFace(3),
-                      createFace(4),
-                      createFace(5),
-                    ],
-                    itemExtent: 75.0,
                   ),
                 ],
               ),
