@@ -216,7 +216,7 @@ class _SpinningDialViewState extends State<SpinningDialView>
     return Transform(
       key: Key((index + 1).toString()),
       transform: Matrix4.identity()
-        ..setEntry(3, 2, 0.001) // perspective
+        ..setEntry(3, 2, 0.00001) // perspective
         ..translate(calculateLinearOffset(currentAngle, index))
         ..rotateX(calculateRotationOffset(currentAngle, index)),
       alignment: Alignment.center,

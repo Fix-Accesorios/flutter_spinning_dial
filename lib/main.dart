@@ -71,18 +71,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.red,
+    return Padding(
+      padding: const EdgeInsets.only(top:180.0),
       child: Container(
-        color: Colors.green,
-        child: Column(
-          children: <Widget>[
-            Text(
-              controller.selectedItem.toString(),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 180.0),
-              child: Row(
+        color: Colors.red,
+        child: Container(
+          color: Colors.green,
+          child: Column(
+            children: <Widget>[
+              Text(
+                controller.selectedItem.toString(),
+              ),
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
                   SpinningDialView(
@@ -114,8 +114,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
