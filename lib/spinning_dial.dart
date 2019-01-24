@@ -248,7 +248,6 @@ class DialController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _position.dispose();
     super.dispose();
   }
 
