@@ -375,6 +375,9 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   void handleDragUpdate(double linearDelta) {
+    if(physicsController.isAnimating){
+      physicsController.stop();
+    }
     //print("*******************moveOffset: $linearDelta");
     var rotationalDelta = calculateAngularDelta(linearDelta) *
         -1; //drag is opposite direction of movement on screen
