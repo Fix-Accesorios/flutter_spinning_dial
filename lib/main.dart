@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'spinning_dial.dart';
 
 void main() => runApp(MyApp());
@@ -71,51 +72,52 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top:180.0),
-      child: Container(
-        color: Colors.red,
-        child: Container(
-          color: Colors.green,
-          child: Column(
-            children: <Widget>[
-              Text(
+    return Scaffold(
+      body: Container(
+        padding: EdgeInsets.only(top: 180),
+        color: Colors.green,
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
                 controller.selectedItem.toString(),
+                style: TextStyle(fontSize: 24.0),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[
-                  SpinningDialView(
-                    detent: 1.0,
-                    children: <Widget>[
-                      createFace(0),
-                      createFace(1),
-                      createFace(2),
-                      createFace(3),
-                      createFace(4),
-                      createFace(5),
-                      createFace(6),
-                      createFace(7),
-                    ],
-                    itemExtent: 83.0,
-                    onSelectedItemChanged: (int newValue) {
-                      setState(() {
-                        num = newValue;
-                      });
-                      //print("Controller value: ${controller.selectedItem}");
-                    },
-                    onDetentEnter: () {
-                      //print("Dentent Enter");
-                    },
-                    onDetentExit: () {
-                      //print("Dentent Exit");
-                    },
-                    controller: controller,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[
+                SpinningDialView(
+                  detent: 1.0,
+                  children: <Widget>[
+                    createFace(0),
+                    createFace(1),
+                    createFace(2),
+                    createFace(3),
+                    createFace(4),
+                    createFace(5),
+                    createFace(6),
+                    createFace(7),
+                  ],
+                  itemExtent: 83.0,
+                  onSelectedItemChanged: (int newValue) {
+                    setState(() {
+                      num = newValue;
+                    });
+                    //print("Controller value: ${controller.selectedItem}");
+                  },
+                  onDetentEnter: () {
+                    //print("Dentent Enter");
+                  },
+                  onDetentExit: () {
+                    //print("Dentent Exit");
+                  },
+                  controller: controller,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

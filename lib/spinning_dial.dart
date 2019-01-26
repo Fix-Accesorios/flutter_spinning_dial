@@ -1,6 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
-import 'dart:math';
 import 'package:vector_math/vector_math_64.dart' as Vectors;
 
 class SpinningDialView extends StatefulWidget {
@@ -358,7 +359,7 @@ class DialPosition extends ValueNotifier<double> {
 
   ///The item that is facing towards the user
   int get itemIndex {
-    var frontIndex = 0;
+    var frontIndex = 1;
     var sides = polygon.sides;
     //If it is the first side, we will skip the for loop
     if (currentAngle < (sides * 2 - 1) * pi / sides &&
@@ -429,8 +430,8 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   double _detentPositiveOffsetAngle() {
-    var offset = polygon.angleOfSide(itemIndex) +
-        polygon.exteriorAngle * detent / 2;
+    var offset =
+        polygon.angleOfSide(itemIndex) + polygon.exteriorAngle * detent / 2;
     if (offset > 2 * pi) {
       offset = offset - 2 * pi;
     }
@@ -438,8 +439,8 @@ class DialPosition extends ValueNotifier<double> {
   }
 
   double _detentNegativeOffsetAngle() {
-    var offset = polygon.angleOfSide(itemIndex) -
-        polygon.exteriorAngle * detent / 2;
+    var offset =
+        polygon.angleOfSide(itemIndex) - polygon.exteriorAngle * detent / 2;
     if (offset < 0) {
       if (offset < 0) {
         offset = 2 * pi - offset.abs();
