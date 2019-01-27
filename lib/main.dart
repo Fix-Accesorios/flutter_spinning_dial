@@ -7,26 +7,13 @@ void main() => runApp(MyApp());
 Widget createFace(int index) {
   var key = (index + 1).toString();
 
-  var colors = [
-    Colors.red,
-    Colors.yellow,
-    Colors.blue,
-    Colors.red,
-    Colors.yellow,
-    Colors.blue,
-    Colors.red,
-    Colors.yellow,
-    Colors.blue,
-    Colors.red
-  ];
-
   return ClipRect(
     key: Key(key),
     child: Align(
       alignment: Alignment.center,
       child: Container(
         key: Key(key),
-        color: colors[index],
+        color: Colors.blue[100 * (index + 1)],
         padding: EdgeInsets.fromLTRB(20.0, 30.0, 20.0, 30.0),
         child: Text(
           key,
@@ -75,11 +62,11 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       body: Container(
         padding: EdgeInsets.only(top: 180),
-        color: Colors.green,
+        color: Colors.blueGrey,
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.only(bottom:20.0),
               child: Text(
                 (num + 1).toString(),
                 style: TextStyle(fontSize: 24.0),
