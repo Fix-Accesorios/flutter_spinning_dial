@@ -1,3 +1,4 @@
-# flutter_spinning_dial
+# Spinning Dial
+![](preview.gif)
 
 # still under construction
