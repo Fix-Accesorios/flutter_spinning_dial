@@ -359,7 +359,7 @@ class DialPosition extends ValueNotifier<double> {
 
   ///The item that is facing towards the user
   int get itemIndex {
-    var frontIndex = 1;
+    var frontIndex = 0;
     var sides = polygon.sides;
     //If it is the first side, we will skip the for loop
     if (currentAngle < (sides * 2 - 1) * pi / sides &&

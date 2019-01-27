@@ -81,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                controller.selectedItem.toString(),
+                (num + 1).toString(),
                 style: TextStyle(fontSize: 24.0),
               ),
             ),
